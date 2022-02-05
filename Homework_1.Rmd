@@ -1,0 +1,54 @@
+---
+title: "Homework_1"
+author: "Vyanna Hill"
+date: "1/30/2022"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction| Assessment on Police shooting and ciziten deaths in the US
+
+The article "Where Police Have Killed Americans in 2015"^[https://fivethirtyeight.com/features/where-police-have-killed-americans-in-2015/] aimed to analyze what made up the majority of police related shooting in the US. The premise was a observation, if there was a correlation in the related deaths' backgrounds and their place at time of death. There is notation in liberation groups, which theorizes there is race based discrimination by law enforcement.
+
+### Task 1| data collection
+In order to look at the article's findings, we must upload their data set.It is noted the data collection by The Guardian has been verified by its sources.
+
+```{r}
+library(ggplot2)
+main.Data<-read.csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/police-killings/police_killings.csv",header=TRUE)
+overall<-data.frame(table(main.Data$raceethnicity))
+ggplot(main.Data,aes(raceethnicity)) + geom_bar()+labs(y="Count",x="Race")
+```
+
+One point of the article I want to explored more of the author's points and observations. In the article, the author made a point to address the protesters' main contempt with the police relating shootings. His scope on the protesters' concerns lies that the economical disparities and alleged racial discrimination by police are the "causes of their anger". 
+
+Let's address the racial background of the report; there were a total of 467 death from police related shooting. Outside the perspective, the largest deaths were 236 individuals of white descent compared to 135 individuals of black descent.The national estimate from the census estimated 40,695,277 black individuals in the US, which makes the demographic ~12.661% of total population. This compared to the white population that makes up ~73.095% helps support the protesters argument. The argument that deaths by police have more impact in the black community ^[https://data.census.gov/cedsci/table?q=United%20States&t=Race%20and%20Ethnicity&g=0100000US&y=2015&tid=ACSDT1Y2015.B02003].
+
+
+
+### Task 2| Subset creation
+The other observation to explore is the cases and their frequency that the author brought up in offense of the trend. In the article, the author stated there was trend that death by police were prominent in neighborhoods that were poor and had a high black population. The author brought up the example of Vincent Cordaro as an example of deaths where the area's household income is high. For a closer overview, lets examine cases where the area's household income is high. 
+
+I want a subset of data where the area's national bucket is high (4&5). In addition, let us see if the deaths involved a weapon.
+```{r}
+temp<-main.Data[which(main.Data$nat_bucket>3),]
+High.NB<-subset(temp,select=-c(latitude,longitude,state_fp,county_fp,tract_ce,geo_id,county_id,pov,urate,college))
+H.armed<-subset(High.NB,armed!="No")
+H.unarmed<-subset(High.NB,armed=="No")
+HBUarmed.stats<-data.frame(table(H.armed$raceethnicity))
+HBUunarmed.stats<-data.frame(table(H.unarmed$raceethnicity))
+ggplot(H.armed,aes(raceethnicity)) + geom_bar()+labs(y="Count",x="Race")
+ggplot(H.unarmed,aes(raceethnicity)) + geom_bar()+labs(y="Count",x="Race")
+```
+
+In High bucket areas, there were a total 116 deaths reported in the data. The high bucket areas where these deaths occurred only makes up ~24.839% of total deaths. White individuals are dominated in both fields as reflection to the US's race demographic. 
+
+In note of the unarmed data, black individuals were second in running. This finding is questionable in the comparisons of population density. There was a higher Hispanic/Latino population percentage than the black population,but there were only one Hispanic/Latino death compared to the 9 black deaths.
+
+## Conculsion 
+
+There is more questions raised on the data set in relations to the topics of Death by Police and its accounts of discrimination and economic disparity. The author touched on the subject that this data set can show a multitude of interpretations. There is a need of more data to show the complexities of the US race demographic to the overall numbers.  

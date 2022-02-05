@@ -1,0 +1,82 @@
+---
+title: "SQL and R"
+author: "Vyanna Hill"
+date: "`r Sys.Date()`"
+output: openintro::lab_report
+---
+
+## Summary: work before R
+
+### Survery and setting up SQL
+My survey contain nine questions: The users ratings on six films, their age, if they like action movies, and their favorite movie snack. My survey had the requirement that users must fill out all questions. I standardized the movie ratings to scale of 1-5, so users do not have to be specific on their ratings. If a survey taker did not see a movie, they had to select "101". It was not a requirement for truthfulness in the personal questions, so the survey taker had the option to input random answers. 
+
+I conducted this survey using Google Forms; I submitted the link onto my social media and ask my followers to fill out the survey. Once I received six replies, I closed the survey and retrieved the .csv file of the results. The only edit to the original .csv file was the removal of the time stamp as I had no use for it. In SQL, I transform the data into two tables. The MovieViewer holds information about the Viewer's taste and a reference to their ratings. The MovieRatings holds information of the Viewer's ratings on the six recent movies. 
+
+
+### Work in R
+
+Lets bring up the two tables in R! I have to install the RPostgres package to connect to the Database management program I used, which is Postgres. I created a user for the r access Afterwards, I will connect to the database I created for the homework called "amcviewers".
+```{r}
+install.packages("RPostgres")
+library(DBI)
+con <- dbConnect(RPostgres::Postgres(),dbname = 'amcviewers', 
+                 host = 'localhost', 
+                 port = 5432, 
+                 user = 'racess',
+                 password = 'password')
+```
+
+Lets pull both tables from the server into two data frames. Lets label Movie ratings to M.Rate and Movie Viewer to M.Viewer
+```{r}
+m.rate<-dbGetQuery(con,"select * from movieratings")
+m.viewer<-dbGetQuery(con,"select * from movieviewer")
+head(m.rate)
+head(m.viewer)
+
+```
+
+Now, We have successfully retrieve both tables from the server! We can play around with the data. I want to find out the average age of the surveyor and if the majority like action movies. 
+```{r}
+mean(m.viewer$age)
+library(stringr)
+y<-sum(str_count(m.viewer$like_action,"e"))
+y<-as.numeric(y[1])
+n<-sum(str_count(m.viewer$like_action,"o"))
+n<-as.numeric(n[1])
+if(y>n){
+  sprintf("Majority like Action movies with votes of %d",y)
+}else{
+  sprintf("Majority do not like Action movies with votes of %d",n)
+}
+
+```
+The results show the average age is 22 and the majority loves action movies! This is interesting, as the action movies did have a score of 3+.
+
+```{r}
+x<-0
+c<-0
+sumRate<-function(z){
+  for(i in z){
+    if(i!=101){
+      x<-x+i
+      c<-c+1
+    }
+  }
+  r<-x/c
+  print(r)
+}     
+sumRate(m.rate$movie1)
+sumRate(m.rate$movie2)
+sumRate(m.rate$movie3)
+sumRate(m.rate$movie4)
+sumRate(m.rate$movie5)
+sumRate(m.rate$movie6)
+```
+
+It seems Movie 6 ("LICORICE PIZZA") had the highest rating compared to the others. However, I would like to included SpiderMan had the highest rating when you include the amount of people who saw the film.
+
+Finally, I would love to see what the surveyors have as their movie snack. What a delicious way to end our work!
+```{r}
+m.viewer$favorite_snack
+```
+

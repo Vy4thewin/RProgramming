@@ -42,5 +42,10 @@ UPDATE MovieViewer SET RatingId=(SELECT RatingID FROM MovieRatings WHERE MovieVi
 ALTER TABLE MovieViewer ADD FOREIGN KEY (RatingId) REFERENCES MovieRatings(RatingID);
 
 --Our data is normalized and we can move to the R side of the homework :)
+--We created a user to log in our database for connection purposes
+CREATE USER rAcess WITH ENCRYPTED PASSWORD 'password';
+GRANT ALL PRIVILEGES ON DATABASE amcviewers TO rAcess;
+
+
 SELECT * FROM MovieViewer;
 SELECT * FROM MovieRatings;

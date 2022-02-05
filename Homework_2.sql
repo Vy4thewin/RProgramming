@@ -43,8 +43,11 @@ ALTER TABLE MovieViewer ADD FOREIGN KEY (RatingId) REFERENCES MovieRatings(Ratin
 
 --Our data is normalized and we can move to the R side of the homework :)
 --We created a user to log in our database for connection purposes
+--Below is just the necesarry steps to grant permissions to databases and do queries
 CREATE USER rAcess WITH ENCRYPTED PASSWORD 'password';
 GRANT ALL PRIVILEGES ON DATABASE amcviewers TO rAcess;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO racess;
+
 
 
 SELECT * FROM MovieViewer;

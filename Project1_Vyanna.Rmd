@@ -84,7 +84,7 @@ chess.B$Pre <- sub("R[:]", "", chess.B$Pre)
 
 ```
 
-In order to get rid of the provisional ratings, There is a for loop that iterates through the column. If a PR is found, it finds the index of the PR and trims the strong down to the player's Pre rating. Then, the pre rating is reclassify as a integer for the compare function below.
+In order to get rid of the provisional ratings, There is a for loop that iterates through the column. If a PR is found, it finds the index of the PR and trims the string down to the player's Pre rating. Then, the pre rating is reclassify as a integer for the compare function below.
 
 ```{r}
 for(a in 1:length(chess.B$Pre)) {
@@ -100,7 +100,7 @@ chess.B <- chess.B[, 1:3]
 
 ### New calculations
 
-For our last column in the outputted .csv file is the average of the opponents' pre chess ratings. For the calculation, we must gather all the players' ore rating scores and take the average. Let's create a function that takes the round columns and return a list of the calculated averages.
+For our last column in the outputted .csv file is the average of the opponents' pre chess ratings. For the calculation, we must gather all the players' pre rating scores and take the average. Let's create a function that takes the round columns and return a list of the calculated averages.
 
 ```{r}
 preAverage <- function() {

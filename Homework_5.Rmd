@@ -1,0 +1,67 @@
+---
+title: "Homework 5"
+author: "Vyanna Hill"
+date: "`r Sys.Date()`"
+---
+
+```{r load-packages, message=FALSE}
+library(tidyverse)
+library(dplyr)
+library(scales)
+```
+
+### Intro| Loading Excel sheet
+
+In order to look inside the vaccination chart, I created my own sheet in a "wide" format. Let's uploaded the work below.
+
+```{r code-chunk-label}
+data<-read.csv("Israel.csv",header = TRUE)
+print(data)
+```
+
+
+### Exercise 1 | Finding popluation
+
+To start, I will use Dplyr's to tidy our chart for analsis.For the population, we can create a new column that adds both populations of vaccinated and non-vaccinated. 
+
+For this study, The data given is too vague to assume Israel's total population. We can play that it's Israel's population that was eligible for the vaccine and the formula given accounts for the difference. For the total eligible population, there were 7,155,090 people for immunization. 
+
+```{r}
+data<-separate(data,col=Population,sep = "[|]",into = c("pop_no_vax","pop_vax"))
+data<-separate(data,col=Percentage,sep = "[|]",into = c("no_vax_per","vax_per"))
+data<-separate(data,col=severe,sep = "[|]",into = c("no_vax_sev","vax_sev"))
+data[,2:7]<-sapply(data[,2:7],as.numeric)
+
+
+data<-data%>%mutate(total_pop=(pop_no_vax+pop_vax)/(no_vax_per+vax_per))
+data<-data%>%drop_na()
+sum(data$total_pop)
+```
+
+
+### Exercise 2| Efficacy vs Severe Diease
+
+We need to calculate the percentages of the severe cases in the vaccinated and non-vaccinated. I will create a new row for the percentages of the cases per 100k to reflect the population of immunization. Then, I can compute the formula for efficacy vs severe disease.
+
+Out of the total population of anyone under 50 years old, there was a ~91.8% efficacy of its population not producing a severe case of COVID. For the population over 50 years old, there was a 85.2% of its population not developing a severe case as well.
+
+```{r}
+data<-data%>%mutate(per_Severe_NV=no_vax_sev*100000/pop_no_vax,per_Severe_V=vax_sev*100000/pop_vax)
+
+data<-data%>%mutate(EvS=1-(per_Severe_V/per_Severe_NV))
+percent(data$EvS)
+
+```
+
+### Exercise 3 | Comparing severe cases rates
+
+Given by the chart, it is about the proportion of vaccinated and non-vaccinated severe cases for the age range. For 50 and younger, it is 12.3. For over 50,it is 6.8.
+
+If you are 50 years old and younger and not vaccinated, you were 12.3x likely of a severe case compared to a vaccinated individual in the same age range. If you are 50 years and over and non-vaccinated, you were 6.8x as likely to developed a severe case compared to a vaccinated individual.
+
+```{r}
+prop_Vax<-data%>%select(per_Severe_NV,per_Severe_V)
+prop_Vax<-prop_Vax%>%mutate(prop=per_Severe_NV/per_Severe_V)
+prop_Vax$prop<-round(prop_Vax$prop,digits = 1)
+print(prop_Vax$prop)
+```

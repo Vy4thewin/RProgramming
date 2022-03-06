@@ -1,0 +1,200 @@
+---
+title: "Project_2"
+author: "Vyanna Hill"
+date: "`r Sys.Date()`"
+
+---
+
+```{r load-packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(lemon)
+library(rmarkdown)
+
+library(stringr)
+library(lubridate)
+library(ggpubr)
+library(ggplot2)
+knit_print.data.frame <- lemon_print
+
+```
+
+### Intro to wide data set collection
+
+For project 3, I selected three data sets from our discussion boards. I will play with problems given by Benson, Tora, and Jay.
+
+### Benson's Exercise| Ramen shops
+
+For Benson's data, it is based on the reviews on a international ramens on the market. His discussion posts ask to analyze the favorite favor, best brand, ramen style.
+
+```{r,render=lemon_print}
+ramen<-read.csv("ramen-ratings.csv",header = TRUE)
+head(ramen)
+```
+
+#### Favorite favor
+
+For Flavor, we will based this on the top ten ranking system in the data set. We need to tidy this data, as the top tens have text inside with the numeral ranking.
+
+On further inspection, I noticed the rankings are all from different years and not all the top tens are in the data set! I will cut down on the repetitiveness of the exercise and view 2016's top ten; however, these steps will lead to the same answer.
+
+```{r,render=lemon_print}
+top_r<-ramen%>%filter(grepl("[0-9]",ramen$Top.Ten))
+tw16<-top_r%>%filter(grepl("(2016)",top_r$Top.Ten))
+
+tw16$Top.Ten<-str_sub(tw16$Top.Ten,7,8)
+tw16$Top.Ten <- as.numeric(tw16$Top.Ten)
+tw16%>%arrange(Top.Ten)
+```
+
+#### Best Brand
+
+For best brand, I will group all the listed brands together and calculate their average score. We can compare the top scored brands with those on the top ten list to see if these raved brands made the scoring board.
+
+Stars is char vector and has some nulls. Let's clean these records!
+After our cleaning, I can now sort the brands on the list
+```{r,render=lemon_print}
+ramen<-na.omit(ramen)
+ramen<-ramen%>%filter(!grepl("Unrated",Stars))
+ramen$Stars <- as.numeric(ramen$Stars)
+Brand_rank<-ramen%>%group_by(Brand)%>%summarise(avg=mean(Stars))
+head(Brand_rank%>%arrange(desc(avg)))
+paged_table(left_join(top_r,Brand_rank,by="Brand"))
+
+```
+
+#### Ramen style
+
+I want to group the data set by the different types of ramen style and see which type has the greatest average in Stars.
+
+```{r,render=lemon_print}
+R_style<-ramen%>%group_by(Style)%>%summarise(avg=mean(Stars))
+paged_table(R_style%>%arrange(desc(avg)))
+
+```
+
+
+### Tora's exercise| School Quality Reports
+ 
+Tora's data set is based on the school's student learning process compared to the student's performance. Tora's discussion asked for the analysis: average student attendance (in-person) to teacher's number of years of experience, movement of student with disabilities to less restrictive environments vs Race of student, Economic needs index vs Number of Remote Learning Days.
+
+```{r, render=lemon_print}
+school<-read.csv("2020_2021_School_Quality_Reports_.csv",header = TRUE)
+```
+
+#### Avg student attendance s teacher's # of YOE
+
+I want to see the school name, school type , enrollment, teacher of more than three years and the metric value of student attendance in person. 
+
+The data is missing values noted by the "No Data" tag. For a cleaner view, let's apply a filter. If a school's teachers experience is above 90%, the student's attendance leans above 90% as well. There are outliers where the teachers' experience is below 40% with high student attendance, but we need more data points and samples to confirm if there is a correlation. It does seems promising the teacher's YOE affects students for in person learning.
+
+```{r,render=lemon_print}
+year_att<-school%>%select(c('school_name','school_type','enrollment','Teach_3_more_exp','val_attendance_inperson_k3_all'))
+year_att<-year_att%>%filter(!grepl("No Data",Teach_3_more_exp))
+year_att<-year_att%>%filter(!grepl("No Data",val_attendance_inperson_k3_all))
+```
+
+#### Mvmt of student with disabilities to less restrictive environments vs Race of student
+
+For the second analysis, we want to see if there's a correlation between the race of a student and their move towards less restrictive environments. 
+
+In my analysis, There is a stronger pattern of Hispanic student population in these high percentages in less restrictive environments compared to other races. For example, there are more black disabled students moved to less restrictive places when the majority of the black student population less than ~30%.
+
+```{r paged.print=TRUE,layout="l-body-outset"}
+dis_race<-school%>%select(c('school_name','ethnicity_asian_pct','ethnicity_black_pct','ethnicity_hispanic_pct','ethnicity_amerindian_pct','ethnicity_pacific_pct','ethnicity_white_pct','val_lre_all'))
+
+dis_race<-dis_race%>%filter(!grepl("No Data",val_lre_all))
+paged_table(dis_race%>%arrange(desc(val_lre_all)))
+
+his_dis<-ggplot(dis_race,aes(ethnicity_hispanic_pct,val_lre_all))+geom_point()+labs(x="% of hispanic student pop.",y="% less restrictive")
+blk_dis<-ggplot(dis_race,aes(ethnicity_black_pct,val_lre_all))+geom_point()+labs(x="% of black student pop.",y="% less restrictive")
+ggarrange(his_dis,blk_dis,ncol=2)
+
+ 
+```
+
+#### Economic needs index vs Number of Remote Learning Days
+
+For context, the economic needs index is the average of students who family's income is at or below the poverty level. It ranks at a scale 0.1-1.0; where 1.0 means the student qualifies for economical support^[https://data.cccnewyork.org/data/bar/1371/student-economic-need-index#1371/a/1/1622/127].
+
+There is not a large standard deviation between the average attendance and the remote attendance across on the school. For the economic needs compared to remote attendance, there is a slight downwards trend of average attendance in remote learning. There could be multiple reasons, as children may substitute for child care or work through school hours in remote settings.
+
+```{r}
+eni_remote<-school%>%select(c('school_name','eni_pct','n_attendance_k3_all','n_attendance_remote_k3_all','val_attendance_remote_k3_all'))
+
+r_att<-ggplot(eni_remote,aes(n_attendance_k3_all,n_attendance_remote_k3_all))+geom_point()+labs(x="Avg s. attendance",y="Avg s. remote attendence")
+ 
+r_enc<-ggplot(eni_remote,aes(eni_pct,val_attendance_remote_k3_all))+geom_point()+labs(x="Econmic needs index", y="Avg s. remote attendance")
+ 
+ggarrange(r_att,r_enc,nrow=2)
+
+```
+
+### Jay's Exercise| Covid Cases
+
+The data set is data from the CDC about Covid cases over state over time. Jay's discussion post asked for the following analysis: Compare the seasons to confirmed and probable cases and deaths, compare the states to confirmed/probable cases and death, and review time gap between created_at and submission dates.
+
+```{r}
+cvid_cases<-read.csv("COVID-19_Cases_and_Deaths.csv",header = TRUE)
+```
+
+#### Comparing probable vs confirmed cases/deaths by seasons
+
+For this exercise, I do not want rows with NA in these columns. I created a duplicate versions with NAs omitted. After NAs are cleared, I need the submission date column to be recognized as date data in order to use the month function. 
+
+For confirmed cases to probable cases, the winter months Dec-Feb were the most infectious season. There appears more probable cases than confirmed; the confirmed cases increased each month leading to January.
+```{r message=FALSE, warning=FALSE, paged.print=TRUE,layout="l-body-outset"}
+
+cvid_cases$submission_date<-as.Date(cvid_cases$submission_date,format='%m/%d/%Y')
+
+cc<-cvid_cases
+
+cc<-cc%>%mutate(m=month(submission_date,label=TRUE))
+
+
+cc<-cc%>%drop_na()
+
+paged_table(cc%>%group_by(m)%>%summarise(con_count=max(conf_cases),prob_count=max(prob_cases)))
+
+
+```
+
+For confirmed to probable deaths, they mirror the same response. The winter months were the most deadly.
+
+```{r warning=FALSE, paged.print=TRUE,layout="l-body-outset"}
+
+paged_table(cc%>%group_by(m)%>%summarise(con_count=max(conf_death),prob_count=max(prob_death)))
+```
+
+#### Comparing probable vs confirmed cases/deaths by state
+
+For confirmed cases to probable cases, California leads first with 4,640,489	confirmed cases! For probable cases, Ohio leads first with 597,447 cases.
+```{r,layout="l-body-outset"}
+paged_table(cc%>%group_by(state)%>%summarise(con_count=max(conf_cases),prob_count=max(prob_cases))%>%arrange(desc(con_count)))
+paged_table(cc%>%group_by(state)%>%summarise(con_count=max(conf_cases),prob_count=max(prob_cases))%>%arrange(desc(prob_count)))
+```
+
+For confirmed deaths, it goes to California again with 71,408 deaths. Tennesse counts for the largest probable deaths from Covid with 6,355 deaths.
+
+```{r,layout="l-body-outset"}
+paged_table(cc%>%group_by(state)%>%summarise(con_count=max(conf_death),prob_count=max(prob_death))%>%arrange(desc(con_count)))
+paged_table(cc%>%group_by(state)%>%summarise(con_count=max(conf_death),prob_count=max(prob_death))%>%arrange(desc(prob_count)))
+```
+
+
+
+#### Compare the time gap between created_at and submission_date by state
+
+For our final problem, we look at the % difference between created_at and submission_date time by state. For this problem, let us transform the created_at class into the date class. Then, I will use the interval function to find the difference in the submission date to the created by date and calculated the duration.
+
+Lets review the duration summary. The average time difference between the two dates is 1 day.
+
+```{r,layout="l-body-outset"}
+cvid_cases$created_at<-as.Date(cvid_cases$created_at,format='%m/%d/%Y')
+cc_date<-cvid_cases%>%select(c('submission_date','created_at'))
+cc_date<-cc_date%>%mutate(dif=as.duration(interval(submission_date,created_at)))
+
+paged_table(cc_date)
+summary(cc_date$dif)
+
+````

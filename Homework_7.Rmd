@@ -1,0 +1,77 @@
+---
+title: "Homework 7"
+author: "Vyanna Hill"
+date: "`r Sys.Date()`"
+---
+
+```{r load-packages, message=FALSE}
+library(tidyverse)
+library(rvest)
+library(dplyr)
+library(lemon)
+library("XML")
+library("methods")
+library("rjson")
+knit_print.data.frame <- lemon_print
+```
+
+
+### Introduction into formats outside of .csv
+For this assignment, I will read a collection of books off of three different files with R. The files will be .XML, .JSON, .HTML. 
+
+All the books will have this table structure: Title, Author(s), Page length, Is it a best seller, Genre. We can see the differences in what each language allows, syntax, if the tables' values stay the same after it is a data frame.
+
+#### Book 1 | XML
+
+For our first book, we will load our book information using the XML function in r. It is simple process with the xmlToDataFrame function to load the XML file into a data frame. 
+
+For syntax, It did not identify the page length column as a integer type or Boolean column. This is surprising as XML is used for data transfer. There a rising question if the data types becomes lost in data frame transform. In addition, I ran a test for the array for one column and it failed as XML does not  support arrays.
+
+```{r,render=lemon_print, paged.print=TRUE,}
+book.xml<-xmlToDataFrame("Book_1.xml")
+print(book.xml)
+summary(book.xml)
+
+```
+
+#### Book 2 | JSON
+
+For our second book, I inserted into a JSON file. This book has two authors and multiple genres. So, let us see how R handles a data format with a array of information.
+
+In the data transfer, Json recognized the different data types and kept their values in the transfer to R. However, R cannot handle the array of one row into a data frame directly. It sees the list as unbalance, so I had to do some transformations for the final product.
+
+```{r,render=lemon_print}
+book.json<-fromJSON(file="Book_2.json")
+summary(book.json)
+
+book.json<-data.frame(Title=c(book.json$Title,"",""),Author=c(book.json$`Author(s)`[1],book.json$`Author(s)`[2],""),page.length=c(book.json$page.Length,NA,NA),is.bestseller=c(book.json$Is.BestSeller,NA,NA),Genre=c(book.json$`Genre(s)`[1],book.json$`Genre(s)`[2],book.json$`Genre(s)`[3]))
+
+summary(book.json)
+```
+
+#### Book 3 | HTML
+
+For our last book, we will try HTML's table to extract the information. In our previous test with XML, the data transfer did not recognize the data types in the table. HTML is a markup language unlike XML, so the possibility it identifies data types is low.  In the HTML creation, it was found that arrays are not support in this langue. It follows a sequential format where the column order matches with the values. For the data extraction, we used tidyverse and
+rvest function.
+
+Surprisingly, HTML recognize the data types of the table. It correctly identify the integer and BOOLEAN columns where the XML failed. HTML does not support array cells like XML, so it is limited if there's multiple descriptors. 
+
+```{r,render=lemon_print}
+book.html<-"Book_3.html"
+book.html<-book.html%>%read_html()%>%html_node("table") %>% html_table()
+
+book.html<-as.data.frame(book.html)
+summary(book.html)
+```
+
+### Conclusion
+
+```{r,render=lemon_print, message=FALSE, warning=FALSE, paged.print=TRUE,}
+print(as_tibble(book.xml))
+print(as_tibble(book.json))
+print(as_tibble(book.html))
+```
+
+All Three languages have their limits on the amount of information and variety. XML and HTML are limited to single values or strings where a separator is needed for extraction. JSON has limited mobility in multiple values, as each column needs to be equal length or there has to be further manipulation for table. 
+
+HTML and JSON both identified and kept the data types of the columns in the transfer over to R. XML; whose purpose is in data storage, did not identify any of the data types in document. It transfer all the columns as string. In conclusion, these data frames are not identical.

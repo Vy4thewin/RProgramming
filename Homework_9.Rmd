@@ -1,0 +1,209 @@
+---
+title: "Lab 9"
+author: "Vyanna Hill"
+date: "`r Sys.Date()`"
+output: openintro::lab_report
+---
+
+```{r load-packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(openintro)
+library(ggplot2)
+library(ggpubr)
+library(rstatix)
+library(GGally)
+```
+
+### Exercise 1
+
+This is an observational study. There are no variables that are tested nor the reviewers are not given a treatment for this to be a experiment.
+
+There might be a clarity problem with the question, as how do we scale beauty or if other identifiers effect the beauty scale. We can rephrase the question as "If there is a correlation between the professor's scaled beauty and the professor's overall score?".
+
+
+###  Exercise 2
+
+The score histogram is left-skewed. Generally, students given more positive reviews of their professors. I did expected it to be more right-skewed in reviews, as students might warn others about a professor's performance before registration day.  
+
+```{r code-chunk-label}
+ggplot(data = evals, aes(x = score)) +geom_histogram()+theme_classic()
+```
+
+
+### Exercise 3
+
+Lets see how professors dress depending on gender. It appears that the majority of the two genders listed do not wear formal outfits in class.
+
+```{r}
+ggplot(data=evals,aes(x=gender,y=pic_outfit,fill=pic_outfit))+geom_bar(stat="identity")+theme_minimal()+theme(axis.text.y = element_blank())
+```
+
+### Exercise 4
+
+The initial leaves out the density of the beauty average points compared to the score. We can see more closely how the scores cluster around 4.5 in ratings. 
+
+Also, there appears to be a cluster of the beauty rating of 4 where its score is a 4.5.
+
+```{r}
+g1<-ggplot(data = evals, aes(x = bty_avg, y = score)) +
+  geom_point()
+g2<-ggplot(data = evals, aes(x = bty_avg, y = score)) +
+  geom_jitter()
+ggarrange(g1,g2,ncol=2)
+```
+
+### Exercise 5
+
+Using lm(), we retrieve the y-intercept at 3.8804 and the slope of bty_avg at .06664. Our linear regression line is y=.0664x+3.8804.
+
+We can interpret that there is positive trend between the beauty average and score. There statistically significant between beauty average and score, as the p value is close to zero.
+
+For practically significant, it varies across the beauty average. There are too many negligible effect sizes to confidently say its practically significant.
+
+```{r}
+m_bty<-lm(score~bty_avg,data=evals)
+summary(m_bty)
+
+ggplot(data = evals, aes(x = bty_avg, y = score)) +geom_jitter() +
+geom_smooth(method = "lm")
+
+d<-evals %>% cohens_d(bty_avg ~ score, var.equal = TRUE)
+summary(d$magnitude)
+
+```
+
+### Exercise 6
+
+The least squares regression conditions are met: the residuals have a linear trend, passed nearly normal histogram, passed normal probability plot.
+
+```{r}
+g3<-ggplot(data = m_bty, aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")+theme_classic()
+g4<-ggplot(data = m_bty, aes(x = .resid)) +
+    geom_histogram(binwidth = 25) +
+    xlab("Residuals")+theme_classic()
+g5<-ggplot(data = m_bty, aes(sample = .resid)) +
+  stat_qq()+theme_classic()
+ggarrange(g3,g4,g5)
+```
+
+### Exercise 7
+
+Beauty average with gender is statistically significant like beauty average alone, as its
+P values leads towards zero. We can also verify these results with the testings for least squares regression.
+
+```{r}
+m_bty_gen <- lm(score ~ bty_avg + gender, data = evals)
+summary(m_bty_gen)
+
+g6<-ggplot(data = m_bty_gen , aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")+theme_classic()
+g7<-ggplot(data = m_bty_gen , aes(x = .resid)) +
+    geom_histogram(binwidth = 25) +
+    xlab("Residuals")+theme_classic()
+g8<-ggplot(data = m_bty_gen , aes(sample = .resid)) +
+  stat_qq()+theme_classic()
+ggarrange(g3,g4,g5)
+
+```
+
+### Exercise 8
+
+The beauty average predictor is not as accurate as the new addition with gender. Its new estimate is 3.74734+ 0.07416* (bty_avg)+ 0.17239*(gendermale).
+
+The estimate means with the average score of 3.7, there is a bonus of .07 given from the beauty average and .17 by the gender of the professor. 
+
+### Exercise 9
+
+The professor pictures who had black and white pictures had a higher slope for their lines compared to color picture. It is the assumption that the students cannot accurately distinguish the professor's feature in black and white compared to color.
+
+### Exercise 10
+
+R cannot handle levels above a 2, It did not retrieve data for professors ranked as teaching.
+
+```{r}
+m_bty_rank <- lm(score ~ bty_avg + rank
+, data = evals)
+summary(m_bty_rank)
+
+```
+
+### Exercise 11
+
+For my guess, I believe outfits do not have a effect on the professor's score. From the previous chart in exercise two, the majority of them do not wear formal clothes. 
+
+```{r}
+m_full <- lm(score ~ rank + gender + ethnicity + language + age + cls_perc_eval 
+             + cls_students + cls_level + cls_profs + cls_credits + bty_avg 
+             + pic_outfit + pic_color, data = evals)
+
+```
+
+### Exercise 12
+
+The chart above confirms that non formal outfits do not effect the scores. It makes the variable not statically significant with the p score above a zero. There are few other variables which do not make the cut: ranktenured and ethnicitynot minority.
+
+### Exercise 13
+
+I assume the coefficient of ethnicitynot minority means that if the professor is white, their score is not effect by their race.
+
+### Exercise 14 
+
+The removal of P values greater than 1 shifted upwards  all the remaining p values. For comparison, the previous p value of age is 0.00427 and the new is 0.02551.  
+
+```{r}
+m_expect <- lm(score ~  gender  + language + age + cls_perc_eval + cls_credits + bty_avg 
++ pic_color, data = evals)
+summary(m_expect)
+```
+
+### Exercise 15
+
+I used the step function eliminate the terms which raised the AIC score. The results of that function created the new lm called black_list.
+
+y= 3.9+gendermale* (0.2)+ ethnicitynot minority* (0.16)+languagenon-english   * (-0.25)+age* (-0.01)+cls_perc_eval     * (0.004)+ cls_creditsone credit* (0.51)+bty_avg* (0.05)+ pic_outfitnot formal* (-0.11)+pic_colorcolor* (-0.18)
+
+```{r message=FALSE, warning=FALSE}
+step(m_full,direction = "backward")
+back_list<-lm(formula = score ~ gender + ethnicity + language + age + cls_perc_eval + 
+    cls_credits + bty_avg + pic_outfit + pic_color, data = evals)
+summary(back_list)
+```
+
+### Exercise 16
+
+
+It passes all its test! 
+
+```{r}
+
+g9<-ggplot(data = back_list , aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")+theme_classic()
+g10<-ggplot(data = back_list , aes(x = .resid)) +
+    geom_histogram(binwidth = 25) +
+    xlab("Residuals")+theme_classic()
+g11<-ggplot(data = back_list , aes(sample = .resid)) +
+  stat_qq()+theme_classic()
+ggarrange(g3,g4,g5)
+```
+
+### Exercise 17
+
+Yes, the new information influences the results given. The students who had took their courses will have a stronger opnion compared to students who will make assumptions at face value
+
+### Exercise 18
+
+Professors who were white men with a education in a non speaking country who teaches one credit courses has higher evulations and rated with a higher beauty score.
+
+### Exercise 19
+
+No, I would not generalized for all professors. Theses results are only relevant to the University At Austin professors, where the professor pool reflect these results. Other schools in Texas may have varying professor pools which will have different lm lines than UAA.

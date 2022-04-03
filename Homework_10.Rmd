@@ -1,0 +1,102 @@
+---
+title: "Homework 10"
+author: "Vyanna Hill"
+date: "`r Sys.Date()`"
+output: openintro::lab_report
+---
+
+```{r load-packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(tidytext)
+library(janeaustenr)
+library(dplyr)
+library(stringr)
+library(tm)
+library(textdata)
+library(gutenbergr)
+library(stopwords)
+library(ggplot2)
+library(wordcloud)
+library(lexicon)
+```
+
+### Introduction into sentiments and text analysis
+
+From Chapter 2 in "Text Mining with R: The Tidy approach", We learn about sentiment analysis. Each word is ranked on sentiments, which determines if a term has a positive or negative feeling associated. 
+
+Tidy text provides three lexicon's to measure word association assignment: ncr, bing, and AFINN. Below, the chapter provided their examples of the use of all three lexicons on their corpus of choice janeaustenr. These examples are from Chapter two, which can be found below ^[Robinson, Julia Silge and David. “2 Sentiment Analysis with Tidy Data: Text Mining with R.” 2 Sentiment Analysis with Tidy Data | Text Mining with R, https://www.tidytextmining.com/sentiment.html. ].
+
+```{r code-chunk-label}
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(
+    linenumber = row_number(),
+    chapter = cumsum(str_detect(text, 
+                                regex("^chapter [\\divxlc]", 
+                                      ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+bing_word_counts <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "Contribution to sentiment",
+       y = NULL)
+```
+
+### Extension of Chapter Two
+
+#### Corpus with complex emotions
+
+For our extension, We will use a romance book called "The Story of the Lover" by Hutchins Hapgood. Let's say for the sentiments, we want to view only the terms that surround negative emotions like anger.
+
+Lets use the nrc lexicon and retrieve the most common words from the book which involves anger. From our pull, We see a plot that could be about another partner as terms like jealously, possession and infidelity ranked in the top ten of the list.
+
+```{r}
+story_lover <- gutenberg_download(67706)
+
+story_lover<-story_lover%>%ungroup() %>%
+  unnest_tokens(word, text)
+
+story_lover<-story_lover%>% filter(!(word %in% stopwords(source = "snowball")))
+
+nrc_anger<-get_sentiments("nrc")%>%filter(sentiment=="anger")
+
+story_lover %>%
+  inner_join(nrc_anger) %>%
+  count(word, sort = TRUE)%>%slice_max(n, n = 10)%>%ggplot(aes(n, word)) +
+  geom_col(show.legend = FALSE) +theme_light()
+  
+````
+
+#### Expansions of lexicons
+
+For our new lexicon, I will use the lexicon package to retrieve a new lexicon. For our analysis, Lets see the most common terms associated with sensations. I will use the key regressive imagery table to best reflect the term.
+
+Sensations like sight and touch were most used in the novel compared the other three senses.
+
+```{r}
+imagery<-key_regressive_imagery
+imagery<-imagery%>%filter(category=="sensation")
+imagery$regex<-str_replace_all(imagery$regex,"[\\\\b]","")
+names(imagery)<-c("x","y","z","a","word")
+
+story_lover %>%
+  inner_join(imagery) %>%
+  count(word, sort = TRUE)%>%slice_max(n, n = 10)%>%with(wordcloud(word, n, max.words = 100))
+````
+
+### Conclusion
+
+For my corpus, the key regressive imagery lexicon was more granular compared to the lexicons provided by tidytext. There was more control on the specific terms/feelings in the listings than bing's eight emotions. The lexicon can better defined emotions like romance or senses like taste than the lists provided.

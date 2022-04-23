@@ -1,0 +1,17 @@
+---
+title: "Data607 Final Proposal"
+author: "Vyanna Hill"
+date: "4/23/2022"
+output:   
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+## Abstract
+
+For my final project, I decided to re-visit a data set from earlier in the semester. I wanted a data set where I can use location based analysis. For my project's data , I chosen Chicago's Food Inspection ^[https://www.kaggle.com/datasets/chicago/chicago-food-inspections]. There are two main objectives for my analysis. If there's a present correlation between the type of facilitates and their likelihood of fair food grade. In addition, If the communities' average income dictates the quality of the food services provided.
+
+For the second part of the analysis, this curiosity stems from a popular discussion within social reform. Activists within marginalized communities spoken about how food services are poor and degenerates the overall health ^[https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4783380/]. It is spoken that communities with high incomes have better access with clean food; which are more grocery stores and less fast food places. The likely data sources will be data sets with the average income based on zip code and a possible secondary data set of food inspections.
+
+

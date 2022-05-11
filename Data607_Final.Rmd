@@ -1,0 +1,168 @@
+---
+title: "Food Deserts in the US"
+author: "Vyanna Hill"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(tidycensus)
+library(data.table)
+library(readr)
+library(dplyr)
+library(ggpubr)
+library(sf)
+census_api_key("3d3549857b43fb9f12d359e3822a007cb6ad8ca9")
+```
+
+## Introduction
+
+For this project, I looked into the long term problem of food inequality in low income communities. There was a look into how low income neighborhoods complaints of the lack of access to healthier food options and the questionable quality of the available food. 
+
+The data collection is from City of Chicago's Food Inspection results for this observational study. The City of Chicago was cited to have a large income disparity problem, as citizens denoted the long term discrimination faced in their communities ^[https://www.chicagotribune.com/living/health/ct-life-inequity-data-policy-roots-chicago-20200726-r3c7qykvvbfm5bdjm4fpb6g5k4-story.html]. For this observation study, I will look into the differences of the food facilities available and their ratings and if there's a difference of the communities household income and its quality of food services.
+
+```{r}
+
+Chicago_Data<-read.csv("food-inspections.csv")
+
+#Remove empty columns and location as we will use lat.& long.
+Chicago_Data<-Chicago_Data%>%select(-c("Historical.Wards.2003.2015","Zip.Codes","Community.Areas","Census.Tracts","Wards","Location"))
+
+#Clean up dates just in case for later analysis
+Chicago_Data$Inspection.Date<-str_sub(Chicago_Data$Inspection.Date,start=1,end=-14)
+
+Chicago_Data$Inspection.Date<-Chicago_Data$Inspection.Date%>%as.Date()
+
+#Only look at results with findings by inspector. Take out invalid results 
+
+Clean_Chi<-Chicago_Data%>%filter(Results=="Pass"|Results=="Fail"|Results=="Pass w/ Conditions")
+
+Clean_Chi<-Clean_Chi%>%filter(Risk=="Risk 1 (High)"|Risk=="Risk 3 (Low)"|Risk=="Risk 2 (Medium)")
+
+summary(Clean_Chi)
+
+```
+
+
+## Data Analysis
+
+Before the analysis, Let's understand the variables above. For the Risk, Chicago's site definition of risk of of the selected food services "affecting the public's health"^[https://data.cityofchicago.org/api/assets/BAD5301B-681A-4202-9D25-51B2CAE672FF]. Establishments must obtain the health code with proper maintenance and proper food preparation. The Results are the health code scores for a particular place: Pass, Fail, and Pass with conditions. Pass with conditions scare means there were significant violations found in during the inspection but were corrected immediately. 
+
+### Correlation between the type of facilities and their likelihood of fair food grade
+
+For this analysis, there was a look into the type of facilities provided in the report. There were 475 Food Facility provided in the data set, as there was not a set group of terms used by inspectors. This was the first challenge of the question, as the large variety of terms used could not be grouped for simplicity. 
+
+Each facility was group by their type to view their total count and its frequency overall. It is seen that the top facility types are Restaurants, Grocery stores, and schools and their share in the total count.
+
+Then, Let's move our attention towards these facilties and their associate risks. The assumption I will have to follow from the limited granularity is the risks of public health is based on the size of daily foot traffic.
+The chart Chi_rank unveils the totals for each facility type and their risk breakout. Restaurants Risk 1 have the highest count of inspections.
+
+Now, We need a system to see if facility type's health score is at least passes on average. The way the score is quantify by the point system: one point for a pass, half a point for a pass with conditions, and no points for a fail. If over half of its population passes their inspection, then the majority of the facilities included are up to code. 
+
+The score was performed, the table unveils that the majority of high risk restaurants have passed their inspections. A deeper view shows there is a congregation of failed inspections in the middle of the map. This will be explored later. For now, There is not a strong correlation between the facility type and its results. 
+
+To double verify my findings, I check to see if the correlation of the health code scores and its risk and facility type was statically significant. A linear regression was applied and the p-values were above .05, which means it is not statically significant. I did discount the p-values where it did passed, as the total is too small for confirmation.
+
+```{r}
+
+#Let's see the possible facilities and their averages overall
+Facility<-Clean_Chi%>%group_by(Facility.Type)%>%summarise(n=n())%>%mutate(Avg=n/sum(n))%>%arrange(desc(Avg))
+ 
+as_tibble(Facility)
+
+#Rank the Risk system-> Can cause risk to public health
+
+Chi_Score<-Clean_Chi%>%select(c("Facility.Type","Risk","Results"))
+ 
+Chi_Rank<-Chi_Score%>%group_by(Facility.Type)%>%count(Risk)%>%arrange(desc(n))
+
+Chi_Rank<-Chi_Rank%>%mutate(freq=n/sum(n))
+
+as_tibble(Chi_Rank)
+#Now, Categorizes pass/fail system into a score. Fail=-1, pass w/ conditions=.5, Pass=1
+
+Chi_Score$Results<-str_replace_all(Chi_Score$Results, c("Pass w/ Conditions"="0.5","Pass"="1.0","Fail"="0.0"))
+
+Chi_Score$Results<-as.numeric(Chi_Score$Results)
+
+Chi_Score<-Chi_Score%>%group_by(Facility.Type,Risk)%>%summarise(score=sum(Results))%>%arrange(desc(score))
+
+#Join the health score scores and risk tables together with a inner join
+Chi_Combine<-inner_join(Chi_Rank,Chi_Score,by=c("Facility.Type"="Facility.Type","Risk"="Risk"))
+
+Chi_Combine<-Chi_Combine%>%mutate(benchmark=n/2)
+
+#If the score is higher than total population== Majority passed inspection
+
+Chi_Combine<-Chi_Combine%>%mutate(passMark=ifelse(score>benchmark,"Majority Pass inspection","Majority Failed inspection"))
+
+#Majority of Facility types passed inspection
+as_tibble(Chi_Combine)
+
+#Observe if the passes are overall, Some congregation of fails in the middle of the map
+ggplot()+geom_sf()+geom_point(data=Clean_Chi,aes(x = Longitude, y = Latitude,color=Results,size=0.1,alpha=0.05))+theme_minimal()+labs(color="Inspection Results",title = "Chicago's Facility Types vs Health Inspection Results")
+
+#Let's see with our top three facility types their scores
+cc_short<-Chi_Combine%>%filter(Facility.Type=="Restaurant"|Facility.Type=="Grocery Store"|Facility.Type=="School")
+
+as_tibble(cc_short)
+
+## Is there a statically significance between facility type and risk with the scores. Not Statically significant as p-values are greater than .05
+
+chi_lm<-lm(score~Facility.Type+Risk,data = Chi_Combine)
+
+# Summary : The main three facilities have p-values<.05
+#I commented out the summary linear regression as its all 475 Facility Types
+#summary(chi_lm)
+```
+
+### A Community average Household income vs the quality of the food services provided
+
+For this analysis, I used tidycensus to retrieve the average household income from 2020 census. The only available variable that matched our needs had the data by the tract. The tract is a region that the census used to map their surveys and not at the zip code level, which would make mapping these incomes easier. So, I used an additional source to filter the tidycensus data to only include data in the Chicago area. The Chicago data portal has provided the CensusTracts, which include of all the current tracts of Chicago with their GEOID included^[https://data.cityofchicago.org/Facilities-Geographic-Boundaries/Boundaries-Census-Tracts-2010/5jrd-6zik]. Then, I used the CenesusTract as a filter list for matches with Chicago GEOIDs with those in the census data for incomes in Illinois. In return, There was a approximate match between the stores and their tract.
+
+For the mapping, There is a side by side comparison with the median household income and the inspection results. In the middle of Chicago, the tract communities have household incomes lower than 50K annually. The Food Quality map has a grouping on majority failed inspections in the same geographic area. There appears to be a trend of denser red clusters of failed inspections reflect low income areas shown in the bottom left corner of the map as well.
+
+```{r message=FALSE, warning=FALSE}
+
+#Using tideycensus holds HH Income, geometry holds lat/long coordinates 
+
+area_HH<-get_acs(geography = "tract",
+variables = "B19013_001",state = "IL", geometry = TRUE)
+
+#Need a data pal to match GEOID within Chicago boundaries (CDP,updated 2019)
+
+geo_lookup<-read_csv("CensusTracts.csv",col_select="GEOID10")
+area_HH<-area_HH%>%filter(GEOID %in% geo_lookup$GEOID10)
+
+
+#Will not get exact matches with Chicago data as its a tract== blocked area. lets layer both data onto each other
+
+#Mapping risk to location
+
+# mapping HH income to risk
+g1<-area_HH%>%
+  ggplot(aes(fill = estimate)) + 
+  geom_sf(color = NA) + 
+  scale_fill_viridis_c(option = "viridis")+labs(fill="Household Income",title = "Chicago's median Household Income vs Food rating")+theme_minimal()
+
+#Using sf to map inspector results to Chicago map
+g2<-ggplot(data=area_HH)+geom_sf()+geom_point(data=Clean_Chi,aes(x = Longitude, y = Latitude,color=Results,size=0.1,alpha=0.05))+theme_minimal()
+
+#Note: G2 takes a few minutes to load!
+g1
+g2
+#ggarrange(g1,g2,nrow = 2)
+```
+
+## Takeaways 
+
+Back to the facility type and its relationship of a lower health code score, there a trend of red and blue plots in the middle of the Chicago map. It was appear from both maps provided, there is a stark HH income difference and the quality of the food services provided. It appears the likelihood of a food facility with a health code violation increased.

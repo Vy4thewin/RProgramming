@@ -79,7 +79,7 @@ NY_ind<-NY_ind%>%filter(complete.cases(.))
 
 
 #All industries in NY graph saved below,we can use bloxplot() to show the average employee count and its ranges in employees, we limited the graph to 3,000 as IT has the largest outlier which isn't relevant to our avg employement
-ggplot(NY_ind,aes(y=Industry,x=Employees))+geom_boxplot()+theme_classic()+xlim(0,3000)+title("Average employmee count in NY")
+ggplot(NY_ind,aes(y=Industry,x=Employees))+geom_boxplot()+theme_classic()+xlim(0,3000)+ggtitle("Average employmee count in NY")
 ```
 
 ## Question 3
@@ -99,5 +99,5 @@ top_rev<-inc%>%group_by(Industry)%>%summarise(avg_revEmp=sum(Revenue)/sum(Employ
 head(top_rev)
 
 #We can also visualize this distribution of revenue via bar plot
-ggplot(top_rev,aes(x=Industry,y=avg_revEmp))+geom_bar(stat = "identity")+theme_classic()+ coord_flip()+title("Revenue per employee by Industry")
+ggplot(top_rev,aes(x=Industry,y=avg_revEmp))+geom_bar(stat = "identity")+theme_classic()+ coord_flip()+ggtitle("Revenue per employee by Industry")
 ```

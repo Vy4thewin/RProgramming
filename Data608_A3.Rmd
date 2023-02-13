@@ -1,0 +1,55 @@
+---
+title: "Data608 Module 3"
+author: "Vyanna Hill"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+```{r}
+library(shiny)
+library(tidyverse)
+library(plotly)
+library(rsconnect)
+```
+
+
+
+#connect to my shinyapp io account and start the app
+```{r echo=FALSE}
+rsconnect::setAccountInfo(name='vyluvsshiny',
+			  token='DF836B8E49E7BFED39D4C4B38E3DAB4A',
+			  secret='tlXLG9E87hkzMjsRMDd5svXPtlQP7i9Jvnsj/5W0')
+rsconnect::deployApp("C:/Users/walki/Documents/GitHub/RProgramming")
+
+```
+### Intro
+
+Hi! My shiny app program lives [here]() and can be run online via[here aswell](https://vyluvsshiny.shinyapps.io/rprogramming/)
+
+
+### 1) Create a visualization that allows you to rank States by crude mortality for each cause of death.
+
+For this question, there were several asks from the question.
+
+  -Only looking for data from 2010
+  -Ranking crude mortality rates across all fifty states
+  -filtering entries by cause of mortality
+  
+For this graph, we can filter our data set with dplyr's filter setting to include only entries from 2010. As we want to rank the states by its crude morality rate, it appears we are looking for a bar graph to display the percentage by state. We can filter by a singular cause with our button option, which changes our statistics each pull. In our live feed link here, we can filter and see the states crude mortality by cause in 2010.
+
+### 3)Create a visualization that lets your clients see one cause of death at the time through the years
+
+For this question , the asks are listed below.
+  -Change in the morality rate over time
+  -Compared to the national average= a baseline 
+  -one cause of death at the time
+  
+Like in the previous question, there is no ask to show a singular state in our chart. The only difference is that we are plotting a line chart to show the mortality rate over the decades. For this question, I found a way to keep both graphs in the same server as debugging the reactive state was a bit of a challenge (thank you breakpts!!). The resource [here](https://stackoverflow.com/questions/38750446/output-different-plots-based-on-user-input-in-shiny) help me understand the reactive state, as I see it as the playground for our temporary values. It acts as a host for any new sessions as assigning values with input$ did not work outside this function.
